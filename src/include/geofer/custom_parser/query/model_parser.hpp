@@ -2,7 +2,7 @@
 
 #include "geofer/core/common.hpp"
 #include "geofer/custom_parser/query_statements.hpp"
-#include "goefer/custom_parser/tokenizer.hpp"
+#include "geofer/custom_parser/tokenizer.hpp"
 
 #include "fmt/format.h"
 #include <memory>

@@ -1,6 +1,6 @@
 set(EXTENSION_SOURCES
-        config.cpp
-        prompt.cpp
-        model.cpp
-    ${EXTENSION_SOURCES}
-    PARENT_SCOPE)
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/prompt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/model.cpp
+        ${EXTENSION_SOURCES}
+        PARENT_SCOPE)

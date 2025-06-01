@@ -18,9 +18,10 @@ std::filesystem::path Config::get_global_storage_path() {
 #ifdef _WIN32
     const char* homeDir = getenv("USERPROFILE");
 #else
-    const char* home = getenv("HOME");
+    const char* homeDir = getenv("HOME");
+    const char* homeDir = getenv("HOME");
 #endif
-    if (home == nullptr) {
+    if (homeDir == nullptr) {
         throw std::runtime_error("Could not find home directory");
     }
     return std::filesystem::path(homeDir) / ".duckdb" / "geofer_storage" / "geofer.db";
@@ -44,7 +45,7 @@ duckdb::Connection Config::GetGlobalConnection() {
 }
 
 // 设置全局存储路径
-void Config::SetGlobalStorageLocation() {
+void Config::SetupGlobalStorageLocation() {
     const auto geofer_global_path = get_global_storage_path();
     const auto geoferDir = geofer_global_path.parent_path();
     if (!std::filesystem::exists(geoferDir)) {
@@ -87,7 +88,7 @@ void Config::ConfigureLocal(duckdb::DatabaseInstance& db) {
 void Config::ConfigureTables(duckdb::Connection& con, const ConfigType type) {
     con.BeginTransaction();
     std::string schema = Config::get_schema_name();
-    ConfigSchema(con, schema, type);
+    ConfigSchema(con, schema);
     ConfigModelTable(con, schema, type);
     ConfigPromptTable(con, schema, type);
     con.Commit();
@@ -98,7 +99,7 @@ void Config::Configure(duckdb::DatabaseInstance& db) {
     Registry::Register(db);
     SecretManager::Register(db);
     if (const auto db_path = db.config.options.database_path; db_path != get_global_storage_path().string()) {
-        SetGlobalStorageLocation();
+        SetupGlobalStorageLocation();
         ConfigureGlobal();
         ConfigureLocal(db);
     }

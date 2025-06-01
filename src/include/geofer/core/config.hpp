@@ -37,6 +37,6 @@ private:
 	static void ConfigModelTable(duckdb::Connection& con, std::string& schema_name, ConfigType type);	// 配置模型表
 	static void SetupDefaultModelsConfig(duckdb::Connection& con, std::string& schema_name);			// 设置默认模型配置
 	static void SetupUserDefinedModelsConfig(duckdb::Connection& con, std::string& schema_name);		// 设置用户自定义模型配置
-}
+};
 
 } // namaspece geofer

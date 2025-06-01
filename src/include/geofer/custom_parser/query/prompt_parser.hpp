@@ -1,8 +1,8 @@
 #pragma once
 
 #include "geofer/core/common.hpp"
-#include "geofer/custom_parse/query_statements.hpp"
-#include "geofer/custom_parse/tokenizer.hpp"
+#include "geofer/custom_parser/query_statements.hpp"
+#include "geofer/custom_parser/tokenizer.hpp"
 
 #include "fmt/format.h"
 #include <memory>
@@ -44,14 +44,14 @@ class GetPromptStatement : public QueryStatement {
 public:
     GetPromptStatement() { type = StatementType::GET_PROMPT; };
     std::string prompt_name;
-}
+};
 
 class GetAllPromptStatement : public QueryStatement {
 public:
     GetAllPromptStatement() { type = StatementType::GET_ALL_PROMPT; };
 };
 
-class PromptParse {
+class PromptParser {
 public:
     void Parse(const std::string& query, std::unique_ptr<QueryStatement>& query_statement);
     std::string ToSQL(const QueryStatement& statement) const;

@@ -20,14 +20,18 @@ enum class TokenType {
 struct Token {
     TokenType type;
     std::string value;
-}
+};
 
 // tokenizer
 class Tokenizer {
 public:
-    Tokenizer(const std::string& query);
+    Tokenizer(const std::string &query);
     Token NextToken();
     std::string GetQuery();
+
+private:
+    std::string query_;
+    int position_;
 
     void SkipWhitespace();
     Token ParseStringLiteral();
@@ -37,10 +41,6 @@ public:
     Token ParseParenthesis();
     Token ParseJson();
     Token GetNextToken();
-
-private:
-    std::string _query;
-    int _position;
 };
 
 // 工具函数：转化 token 类型到字符串

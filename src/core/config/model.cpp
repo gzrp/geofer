@@ -61,13 +61,13 @@ void Config::SetupUserDefinedModelsConfig(duckdb::Connection& con, std::string& 
                                      " model VARCHAR NOT NULL, "
                                      " provider_name VARCHAR NOT NULL, "
                                      " model_args JSON NOT NULL "
-                                     " ); "
+                                     " ); ",
                                      schema_name, table_name ));
     }
 }
 
 void Config::ConfigModelTable(duckdb::Connection& con, std::string& schema_name, const ConfigType type) {
-    if (type == ConfigType::GlOBAL) {
+    if (type == ConfigType::GLOBAL) {
         SetupDefaultModelsConfig(con, schema_name);
     }
     SetupUserDefinedModelsConfig(con, schema_name);

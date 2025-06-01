@@ -1,5 +1,14 @@
-//
-// Created by zhangruipeng on 2025/5/31.
-//
+#include "geofer/registry/registry.hpp"
 
-#include "registry.h"
+namespace geofer {
+
+void Registry::Register(duckdb::DatabaseInstance& db) {
+    RegisterAggregateFunctions(db);
+    RegisterScalarFunctions(db);
+}
+
+void Registry::RegisterAggregateFunctions(duckdb::DatabaseInstance& db) { AggregateRegistry::Register(db); }
+
+void Registry::RegisterScalarFunctions(duckdb::DatabaseInstance& db) { ScalarRegistry::Register(db); }
+
+} // namespace geofer

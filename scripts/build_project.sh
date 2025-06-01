@@ -24,6 +24,7 @@ mkdir -p build/release
 # Configure the project with CMake
 cmake ${GENERATOR} ${BUILD_FLAGS} ${EXT_RELEASE_FLAGS} \
   -DCMAKE_BUILD_TYPE=Release \
+  -DDUCKDB_EXTENSION_CONFIG="${EXT_CONFIG}" \       # 把 Geofer & 其它扩展都启用
   -S "${DUCKDB_SRCDIR}" \
   -B build/release
 

@@ -3,7 +3,7 @@
 #include "geofer/core/common.hpp"
 #include "geofer/custom_parser/query/model_parser.hpp"
 #include "geofer/custom_parser/query/prompt_parser.hpp"
-#include "geofer/custom_parser/query_statement.hpp"
+#include "geofer/custom_parser/query_statements.hpp"
 #include "geofer/custom_parser/tokenizer.hpp"
 
 #include "fmt/format.h"

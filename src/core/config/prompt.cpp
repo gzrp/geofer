@@ -7,7 +7,7 @@ std::string Config::get_prompts_table_name() {
     return "GEOFER_PROMPT_INTERNAL_TABLE";
 }
 
-void Config::ConfigPromptTable(duckdb::Connnection& con, std::string& schema_name, const ConfigType type) {
+void Config::ConfigPromptTable(duckdb::Connection& con, std::string& schema_name, const ConfigType type) {
     const std::string table_name = Config::get_prompts_table_name();
     // 查询表是否存在
     auto result = con.Query(duckdb_fmt::format(" SELECT table_name "

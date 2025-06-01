@@ -30,7 +30,7 @@ void ModelParser::Parse(const std::string& query, std::unique_ptr<QueryStatement
 
 void ModelParser::ParseCreateModel(Tokenizer& tokenizer, std::unique_ptr<QueryStatement>& statement) {
     auto token = tokenizer.NextToken();
-    auto value = duckdb::stringUtil::Upper(token.value);
+    auto value = duckdb::StringUtil::Upper(token.value);
     // CREATE [GLOABL|LOCAL] MODEL ( <model_name>,<model>, <provider_name>, <model_args_json>)
     std::string catalog;
     if (token.type == TokenType::KEYWORD && (value == "GLOBAL" || value == "LOCAL")) {
@@ -38,7 +38,7 @@ void ModelParser::ParseCreateModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
             catalog = "geofer_storage.";
         }
         token = tokenizer.NextToken();
-        value = duckdb::stringUtil::Upper(token.value);
+        value = duckdb::StringUtil::Upper(token.value);
     }
     if (token.type != TokenType::KEYWORD || value != "MODEL") {
         throw std::runtime_error("Expected 'MODEL' after 'CREATE'.");
@@ -107,7 +107,7 @@ void ModelParser::ParseCreateModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
 
 void ModelParser::ParseDeleteModel(Tokenizer& tokenizer, std::unique_ptr<QueryStatement>& statement) {
     auto token = tokenizer.NextToken();
-    auto value = duckdb::stringUtil::Upper(token.value);
+    auto value = duckdb::StringUtil::Upper(token.value);
     // DELETE MODEL <model_name>[;|,]
     if (token.type != TokenType::KEYWORD || value != "MODEL") {
         throw std::runtime_error("Unknown keyword: " + token.value);
@@ -121,7 +121,7 @@ void ModelParser::ParseDeleteModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
 
     token = tokenizer.NextToken();
     if (token.type == TokenType::SYMBOL || token.value == ";") {
-        auto delete_statemment = std::make_unique<DeleteModelStatement>();
+        auto delete_statement = std::make_unique<DeleteModelStatement>();
         delete_statement->model_name = model_name;
         statement = std::move(delete_statement);
     } else {
@@ -131,7 +131,7 @@ void ModelParser::ParseDeleteModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
 
 void ModelParser::ParseUpdateModel(Tokenizer& tokenizer, std::unique_ptr<QueryStatement>& statement) {
     auto token = tokenizer.NextToken();
-    auto value = duckdb::stringUtil::Upper(token.value);
+    auto value = duckdb::StringUtil::Upper(token.value);
     // UPDATE MODEL <model_name> TO [GLOABL|LOCAL];
     // UPDATE MODEL ( <model_name>, <new_model>, <provider_name>, <model_args_json>)
     if (token.type != TokenType::KEYWORD || value != "MODEL") {
@@ -141,19 +141,19 @@ void ModelParser::ParseUpdateModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
     if (token.type == TokenType::STRING_LITERAL) {
         auto model_name = token.value;
         token = tokenizer.NextToken();
-        if (token.type != TokenType::KEYWORD || duckdb::stringUtil::Upper(token.value) != "TO") {
+        if (token.type != TokenType::KEYWORD || duckdb::StringUtil::Upper(token.value) != "TO") {
             throw std::runtime_error("Expect 'TO' after model name.");
         }
         token = tokenizer.NextToken();
-        value = duckdb::stringUtil::Upper(token.value);
-        if (token.typpe != TokenType::KEYWORD || (value != "GLOBAL" && value != "LOCAL")) {
+        value = duckdb::StringUtil::Upper(token.value);
+        if (token.type != TokenType::KEYWORD || (value != "GLOBAL" && value != "LOCAL")) {
             throw std::runtime_error("Expected 'GLOBAL' or 'LOCAL' after 'TO'.");
         }
         auto catalog = value == "GLOBAL" ? "geofer_storage." : "";
 
         token = tokenizer.NextToken();
         if (token.type == TokenType::SYMBOL || token.value == ";") {
-            auto update_statement = std::make_unique<UpdateModelStatement>();
+            auto update_statement = std::make_unique<UpdateModelScopeStatement>();
             update_statement->model_name = model_name;
             update_statement->catalog = catalog;
             statement = std::move(update_statement);
@@ -317,8 +317,8 @@ std::string ModelParser::ToSQL(const QueryStatement& statement) const {
 		query = duckdb_fmt::format(" UPDATE {}geofer_config.GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE "
 								   " SET model = '{}', provider_name = '{}', "
 								   " model_args = '{}' WHERE model_name = '{}'; ",
-								   catelog, update_stmt.new_model, updatestmt.provider_name,
-								   update_stmt.model_args.dump(), update_stmt.model_name);
+								   catalog, update_stmt.new_model, update_stmt.provider_name,
+								   update_stmt.new_model_args.dump(), update_stmt.model_name);
 		break;
 	}
 

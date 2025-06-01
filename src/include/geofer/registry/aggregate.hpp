@@ -12,6 +12,10 @@ public:
 
 private:
     static void RegisterLlmFirst(duckdb::DatabaseInstance& db);
+    static void RegisterLlmLast(duckdb::DatabaseInstance& db);
+    static void RegisterLlmRerank(duckdb::DatabaseInstance& db);
+    static void RegisterLlmReduce(duckdb::DatabaseInstance& db);
+    static void RegisterLlmReduceJson(duckdb::DatabaseInstance& db);
 };
 
 } // namespace geofer
