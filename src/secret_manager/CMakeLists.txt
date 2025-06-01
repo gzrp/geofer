@@ -1,0 +1,4 @@
+set(EXTENSION_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/secret_manager.cpp
+        ${EXTENSION_SOURCES}
+        PARENT_SCOPE)

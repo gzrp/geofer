@@ -1,0 +1,6 @@
+set(EXTENSION_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/openai.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/azure.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ollama.cpp
+        ${EXTENSION_SOURCES}
+        PARENT_SCOPE)
