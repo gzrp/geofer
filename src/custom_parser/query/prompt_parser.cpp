@@ -312,7 +312,7 @@ std::string PromptParser::ToSQL(const QueryStatement& statement) const {
         query = " SELECT 'global' as scope, t1.* "
                 " FROM geofer_storage.geofer_config.GEOFER_PROMPT_INTERNAL_TABLE AS t1 "
                 " JOIN (SELECT prompt_name, MAX(version) AS max_version "
-                " FROM geofer_storage.geofer_config.GEOFER _PROMPT_INTERNAL_TABLE "
+                " FROM geofer_storage.geofer_config.GEOFER_PROMPT_INTERNAL_TABLE "
                 " GROUP BY prompt_name) AS t2 "
                 " ON t1.prompt_name = t2.prompt_name "
                 " AND t1.version = t2.max_version "
