@@ -19,6 +19,7 @@ private:
     static void RegisterFusionCombMED(duckdb::DatabaseInstance& db);
     static void RegisterFusionCombMNZ(duckdb::DatabaseInstance& db);
     static void RegisterFusionCombSUM(duckdb::DatabaseInstance& db);
+    static void RegisterQuack(duckdb::DatabaseInstance& db);
 };
 
 } // namespace geofer
