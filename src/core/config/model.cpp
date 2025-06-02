@@ -8,7 +8,7 @@ std::string Config::get_default_models_table_name() {
 }
 
 std::string Config::get_user_defined_models_table_name() {
-    return "GROFER_MODEL_USER_DEFINED_INTERNAL_TABLE";
+    return "GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE";
 }
 
 void Config::SetupDefaultModelsConfig(duckdb::Connection& con, std::string& schema_name) {

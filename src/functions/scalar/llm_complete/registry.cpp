@@ -4,6 +4,7 @@
 namespace geofer {
 
 void ScalarRegistry::RegisterLlmComplete(duckdb::DatabaseInstance& db) {
+  // 注冊函數
   duckdb::ExtensionUtil::RegisterFunction(db, duckdb::ScalarFunction("llm_complete", {}, duckdb::LogicalType::VARCHAR,
                                                                      LlmComplete::Execute, nullptr, nullptr, nullptr,
                                                                      nullptr, duckdb::LogicalType::ANY));

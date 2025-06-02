@@ -25,43 +25,65 @@
 GET MODELS;
 ```
 
+![获取全部模型.png](images/获取全部模型.png)
+
 获取模型详细信息
 ```sql
 GET MODEL 'model_name';
 ```
 
+![获取模型详细信息.png](images/获取模型详细信息.png)
+
 创建自定义模型
 ```sql
-CREATE MODEL('model_name', 'model', 'provider', {"context_window": 128000, "max_output_tokens": 8000});
+CREATE MODEL('my_model_name', 'my_model', 'my_provider', {"context_window":128000,"max_output_tokens":8000});
 ```
+
+![创建自定义模型.png](images/创建自定义模型.png)
+
 
 修改自定义模型
 ```sql
-UPDATE MODEL('model_name', 'model', 'provider', {"context_window": 128000, "max_output_tokens": 8000});
+UPDATE MODEL('my_model_name', 'my_model_1', 'my_provider_1', {"context_window":128600, "max_output_tokens":9600});
 ```
+
+![修改自定义模型.png](images/修改自定义模型.png)
 
 删除自定义模型
 ```sql
-DELETE MODEL 'model_name';
+DELETE MODEL 'my_model_name';
 ```
+
+![删除自定义模型.png](images/删除自定义模型.png)
 
 模型创建是特定于数据库的，如果希望它不管数据库是什么，它都可用，需要将其设置为 GLOBAL 模式。
 上述创建的模型是特定于正在运行的数据库，默认情况下是 LOCAL, 关键字 LOCAL 是可选的
 
+LOCAL 模式一旦退出，模型即消失，因为在内存中
+GLOBAL 模型则会保留
+
 创建全局模型
 ```sql
-CREATE GLOBAL MODEL('model_name', 'model_type', 'provider', {"context_window": 128000, "max_output_tokens": 8000});
+CREATE GLOBAL MODEL('my_model_name', 'my_model_type', 'my_provider', {"context_window": 128000, "max_output_tokens": 8000});
 ```
 
-创建本地模型
+![创建全局自定义模型.png](images/创建全局自定义模型.png)
+
+创建本地模型, 创建模型默认就是 local 模式
 
 ```sql
-CREATE LOCAL MODEL('model_name', 'model_type', 'provider', {"context_window": 128000, "max_output_tokens": 8000});
+CREATE LOCAL MODEL('local_model_name', 'local_model_type', 'local_provider', {"context_window": 128000, "max_output_tokens": 8000});
 CREATE MODEL('model_name', 'model_type', 'provider', {"context_window": 128000, "max_output_tokens": 8000});
 ```
 
+![创建局部自定义模型.png](images/创建局部自定义模型.png)
+
 切换模型全局和本地状态
+
 ```sql
-UPDATE MODEL 'model_name' TO GLOBAL;
+UPDATE MODEL 'local_model_name' TO GLOBAL;
 UPDATE MODEL 'model_name' TO LOCAL;
 ```
+
+
+![切换模型scope状态.png](images/切换模型scope状态.png)

@@ -34,9 +34,7 @@ void ModelParser::ParseCreateModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
     // CREATE [GLOABL|LOCAL] MODEL ( <model_name>,<model>, <provider_name>, <model_args_json>)
     std::string catalog;
     if (token.type == TokenType::KEYWORD && (value == "GLOBAL" || value == "LOCAL")) {
-        if (value == "GLOBAL") {
-            catalog = "geofer_storage.";
-        }
+        catalog = value == "GLOBAL" ? "geofer_storage." : "";
         token = tokenizer.NextToken();
         value = duckdb::StringUtil::Upper(token.value);
     }
@@ -73,6 +71,11 @@ void ModelParser::ParseCreateModel(Tokenizer& tokenizer, std::unique_ptr<QuerySt
         throw std::runtime_error("Expected non-empty string literal for provider_name.");
     }
     std::string provider_name = token.value;
+
+    token = tokenizer.NextToken();
+    if (token.type != TokenType::SYMBOL || token.value != ",") {
+        throw std::runtime_error("Expected comma ',' after provider_name.");
+    }
 
     token = tokenizer.NextToken();
     if (token.type != TokenType::JSON || token.value.empty()) {
@@ -263,13 +266,13 @@ std::string ModelParser::ToSQL(const QueryStatement& statement) const {
         auto con = Config::GetConnection();
         auto result = con.Query(duckdb_fmt::format(
             " SELECT model_name "
-            " FROM geofer_storage.geofer_config.GEOFERL_MODEL_DEFAULT_INTERNAL_TABLE "
+            " FROM geofer_storage.geofer_config.GEOFER_MODEL_DEFAULT_INTERNAL_TABLE "
             " WHERE model_name = '{}' "
             " UNION ALL "
             " SELECT model_name "
             " FROM {}geofer_config.GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE "
             " WHERE model_name = '{}';",
-            create_stmt.model_name, create_stmt.catalog.empty() ? "geofer_storage." : "", create_stmt.model_name));
+            create_stmt.model_name, create_stmt.catalog.empty() ? "" : "geofer_storage.", create_stmt.model_name));
         if (result->RowCount() != 0) {
             throw std::runtime_error(duckdb_fmt::format("Model '{}' already exist.", create_stmt.model_name));
         }
@@ -287,7 +290,7 @@ std::string ModelParser::ToSQL(const QueryStatement& statement) const {
         auto con = Config::GetConnection();
 
         con.Query(duckdb_fmt::format(" DELETE FROM geofer_config.GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE "
-                                     "  WHERE model_name = '{}';",
+                                     " WHERE model_name = '{}';",
                                      delete_stmt.model_name));
 
         query = duckdb_fmt::format(" DELETE FROM "
@@ -335,7 +338,7 @@ std::string ModelParser::ToSQL(const QueryStatement& statement) const {
                                      update_stmt.catalog == "geofer_storage." ? "global" : "local"));
         }
 
-        con.Query(duckdb_fmt::format(" INSERT INTO {}geofer_config.GEOFERL_MODEL_USER_DEFINED_INTERNAL_TABLE "
+        con.Query(duckdb_fmt::format(" INSERT INTO {}geofer_config.GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE "
                                      " (model_name, model, provider_name, model_args) "
                                      " SELECT model_name, model, provider_name, model_args "
                                      " FROM {}geofer_config.GEOFER_MODEL_USER_DEFINED_INTERNAL_TABLE "
