@@ -14,6 +14,7 @@ void ScalarRegistry::Register(duckdb::DatabaseInstance& db) {
     RegisterFusionCombMNZ(db);
     RegisterFusionCombSUM(db);
     RegisterQuack(db);
+	RegisterImageAnalyze(db);
 }
 
 } // namespace geofer

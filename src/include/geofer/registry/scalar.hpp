@@ -20,6 +20,7 @@ private:
     static void RegisterFusionCombMNZ(duckdb::DatabaseInstance& db);
     static void RegisterFusionCombSUM(duckdb::DatabaseInstance& db);
     static void RegisterQuack(duckdb::DatabaseInstance& db);
+	static void RegisterImageAnalyze(duckdb::DatabaseInstance& db);
 };
 
 } // namespace geofer

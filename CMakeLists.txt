@@ -18,6 +18,7 @@ add_subdirectory(src)
 # Find dependencies
 find_package(CURL REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(cpr CONFIG REQUIRED)
 
 # Build the DuckDB static and loadable extensions
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
@@ -44,11 +45,13 @@ endif()
 
 # Link libraries for the static extension
 target_link_libraries(${EXTENSION_NAME} CURL::libcurl
-        nlohmann_json::nlohmann_json)
+        nlohmann_json::nlohmann_json
+        cpr::cpr)
 
 # Link libraries for the loadable extension
 target_link_libraries(${LOADABLE_EXTENSION_NAME} CURL::libcurl
-        nlohmann_json::nlohmann_json)
+        nlohmann_json::nlohmann_json
+        cpr::cpr)
 
 # Install the extension
 install(

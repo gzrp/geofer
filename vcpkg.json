@@ -1,6 +1,7 @@
 {
         "dependencies": [
                 "nlohmann-json",
+                "cpr",
                 "curl",
                 "catch2"
         ]
