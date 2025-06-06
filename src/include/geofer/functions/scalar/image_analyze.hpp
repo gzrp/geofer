@@ -1,6 +1,7 @@
 #pragma once
 
 #include "geofer/functions/scalar/scalar.hpp"
+#include "geofer/core/config.hpp"
 
 namespace geofer {
 

@@ -61,6 +61,31 @@ static std::string PostToVisionAPI(const char* image_data, duckdb::idx_t image_s
     }
 }
 
+std::string RunSpatialQuery() {
+	auto con = Config::GetConnection();
+	auto result = con.Query(duckdb_fmt::format(" SELECT h.name AS haoke_name, h.address AS haoke_address, b.name AS bank_name, b.address AS bank_address, round((st_distance(h.location, b.location) / 0.0111) * 1000) AS distance "
+        									   " FROM haoke AS h, bank AS b "
+										       " WHERE ST_X(h.location) <= ST_X(b.location) "
+										       " ORDER BY distance "
+										       " LIMIT 5; "));
+	nlohmann::json j_rows = nlohmann::json::array();
+	// 获取列名列表
+	const auto &names = result->names;
+	// 遍历每一行
+	for (duckdb::idx_t row_idx = 0; row_idx < result->RowCount(); ++row_idx) {
+    	nlohmann::json row_json;
+   	 	for (duckdb::idx_t col_idx = 0; col_idx < result->ColumnCount(); ++col_idx) {
+        	const auto &val = result->GetValue(col_idx, row_idx);
+        	if (val.IsNull()) {
+            	row_json[names[col_idx]] = nullptr;  // 显式表示 NULL
+        	} else {
+            	row_json[names[col_idx]] = val.ToString();  // 或使用其他类型解析
+        	}
+    	}
+    	j_rows.push_back(row_json);
+	}
+    return j_rows.dump();
+}
 
 // 逻辑实现，如有必要调用大模型
 std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
@@ -96,8 +121,24 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
         std::string desc = desc_str.GetString();
 
 		 try {
-            std::string result = PostToVisionAPI(blob_ptr, blob_size, desc);
-            results.emplace_back(result);
+            std::string vision_json_str = PostToVisionAPI(blob_ptr, blob_size, desc);
+ 			auto vision_json = nlohmann::json::parse(vision_json_str);
+            bool has_haoke = false, has_bank = false;
+            for (const auto& obj : vision_json["objects"]) {
+                const std::string label = obj["label"].get<std::string>();
+                if (label.find("好客连锁") != std::string::npos) has_haoke = true;
+                if (label.find("银行") != std::string::npos) has_bank = true;
+            }
+
+ 			nlohmann::json final_json;
+            final_json["vision"] = vision_json;
+            if (has_haoke && has_bank) {
+                auto spatial_json = nlohmann::json::parse(RunSpatialQuery());
+                final_json["spatial"] = spatial_json;
+            } else {
+				final_json["spatial"] = nlohmann::json::array(); // 空数组
+            }
+			results.emplace_back(final_json.dump());
         } catch (const std::exception &ex) {
             results.emplace_back(std::string("Error: ") + ex.what());
         }
