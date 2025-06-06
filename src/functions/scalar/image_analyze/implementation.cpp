@@ -18,39 +18,46 @@ void ImageAnalyze::ValidateArguments(duckdb::DataChunk& args) {
     }
 }
 
-static std::string PostToVisionAPI(const std::vector<uint8_t> &blob) {
-    cpr::Buffer buffer(blob.begin(), blob.end(), "upload.jpg");
+static std::string PostToVisionAPI(const char* image_data, duckdb::idx_t image_size, const std::string &description) {
 
-    cpr::Part file_part{ "file", buffer, "image/jpeg" };
+	try {
+		// 构造 multipart 请求体
+		cpr::Multipart multipart {
+			{"description", description},
+			{"file", cpr::Buffer{image_data, image_data + image_size, "image.jpg"}},
+		};
 
-    // 3. 把 cpr::Part 放到一个 vector 里，再用这个 vector 构造 Multipart
-    std::vector<cpr::Part> parts;
-    parts.push_back(file_part);
+		// 发送请求
+		auto response = cpr::Post(
+			cpr::Url{"http://192.168.56.1:8080/api/v1/image_analyze"},
+        	multipart,
+        	cpr::Timeout{5000}
+		);
 
-    // 如果有其它字段，例如 user_id、description，也可以像下面这样加入：
-    // parts.push_back(cpr::Part{ "user_id", "12345" });
-    // parts.push_back(cpr::Part{ "description", "内存中的图片上传示例" });
+		// 基本错误检查
+    	if (response.error) {
+        	throw std::runtime_error("HTTP error: " + response.error.message);
+    	}
+    	if (response.status_code != 200) {
+        	throw std::runtime_error("HTTP " + std::to_string(response.status_code) + ": " + response.text);
+    	}
+		// 解析 json 结果
 
-    cpr::Multipart form(parts);
-    auto resp = cpr::Post(
-        cpr::Url{"http://127.0.0.1:8080/api/v1/image_analyze"},
-        form,
-        cpr::Timeout{5000}
-    );
+		auto j = nlohmann::json::parse(response.text);
+        // std::stringstream ss;
+        // ss << "sha256: " << j["sha256"] << ", size: " << j["file_size"]
+        //   << ", objects: [";
 
-    // 基本错误检查
-    if (resp.error) {
-        throw std::runtime_error("HTTP error: " + resp.error.message);
-    }
-    if (resp.status_code != 200) {
-        throw std::runtime_error("HTTP " + std::to_string(resp.status_code) + ": " + resp.text);
-    }
-    // JSON 校验
-    try {
-        auto json_resp = nlohmann::json::parse(resp.text);
-        return json_resp.dump();
-    } catch (const std::exception &e) {
-        throw std::runtime_error(std::string("Invalid JSON returned: ") + e.what());
+        // for (const auto& obj : j["objects"]) {
+        //    ss << obj["label"].get<std::string>() << "("
+        //       << obj["confidence"].get<float>() << "), ";
+        //}
+        //ss << "]";
+
+        //return ss.str();
+		return j.dump();
+	} catch (const std::exception &e) {
+        throw std::runtime_error(std::string("Exception during POST: ") + e.what());
     }
 }
 
@@ -62,46 +69,49 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
 	std::vector<std::string> results;
     results.reserve(args.size());
 
- 	auto &blob_vec = args.data[0];
-    auto &desc_vec = args.data[1];
-	auto &blob_validity = duckdb::FlatVector::Validity(blob_vec);
-    auto &desc_validity = duckdb::FlatVector::Validity(desc_vec);
+ 	auto &blob_vector = args.data[0];
+    auto &desc_vector = args.data[1];
+	 // 转成统一格式
+    duckdb::UnifiedVectorFormat blob_format;
+    duckdb::UnifiedVectorFormat desc_format;
+    blob_vector.ToUnifiedFormat(rows, blob_format);
+    desc_vector.ToUnifiedFormat(rows, desc_format);
 
-	for (idx_t i = 0; i < rows; i++) {
-		if (!blob_validity.RowIsValid(i)) {
-			results.emplace_back("NULL INPUT");
-			continue;
-		}
-        // 获取 BLOB 内容
-        duckdb::Value blob_value = blob_vec.GetValue(i);
-        duckdb::string_t blob_string = duckdb::StringValue::Get(blob_value);
+    auto blob_data = reinterpret_cast<duckdb::string_t *>(blob_format.data);
+    auto desc_data = reinterpret_cast<duckdb::string_t *>(desc_format.data);
 
-        const char *blob_data = blob_string.GetData();
-        duckdb::idx_t blob_size = blob_string.GetSize();
+	for (idx_t row = 0; row < rows; row++) {
+		if (!blob_format.validity.RowIsValid(row)) {
+            results.emplace_back("NULL INPUT");
+            continue;
+        }
+		auto blob_idx = blob_format.sel->get_index(row);
+        auto desc_idx = desc_format.sel->get_index(row);
 
-        std::string desc = desc_vec.GetValue(i).ToString();
-		// 模拟分析其
-		std::stringstream ss;
-		ss << "Analyzed image of size: " << blob_size
-           << " bytes with description: '" << desc << "'";
-		results.emplace_back(ss.str());
+        const auto &blob_str = blob_data[blob_idx];
+        const auto &desc_str = desc_data[desc_idx];
+
+        const char *blob_ptr = blob_str.GetData();
+        duckdb::idx_t blob_size = blob_str.GetSize();
+        std::string desc = desc_str.GetString();
+
+		 try {
+            std::string result = PostToVisionAPI(blob_ptr, blob_size, desc);
+            results.emplace_back(result);
+        } catch (const std::exception &ex) {
+            results.emplace_back(std::string("Error: ") + ex.what());
+        }
 	}
-
 	return results;
-
 }
 
 void ImageAnalyze::Execute(duckdb::DataChunk& args, duckdb::ExpressionState& state, duckdb::Vector& result) {
 
-	const auto responses = Operation(args);
+    const auto responses = ImageAnalyze::Operation(args);
 
     duckdb::idx_t pos = 0;
-    for (auto &res : responses) {
-		if (res == "NULL INPUT") {
-			result.SetValue(pos++, duckdb::Value()); // 设置为空之
-		} else {
-			result.SetValue(pos++, duckdb::Value(res));
-		}
+    for (const auto &res : responses) {
+        result.SetValue(pos++, duckdb::Value(res));
     }
 }
 

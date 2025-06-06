@@ -49,3 +49,35 @@ select current_schema();
 ```sql
 SET schema=geofer_config;
 ```
+
+
+
+
+```sql
+CREATE TABLE image_table (
+    image_name TEXT,         -- 图片名
+    image BLOB,              -- 图片二进制数据
+    image_desc TEXT          -- 图片描述信息
+);
+
+INSERT INTO image_table
+    SELECT
+    'image1.jpg' AS image_name,
+    content AS image,
+    'image1 描述' AS image_desc
+FROM read_blob('/home/zrp/workdir/image1.jpg');
+
+```
+
+```sql
+SELECT image_analyze(image, image_desc)
+FROM image_table
+WHERE image_name = 'image1.jpg';
+
+
+```
+
+
+curl --location --request POST 'http://192.168.56.1:8080/api/v1/image_analyze' \
+--form 'description="xxx"' \
+--form 'file=@"/home/zrp/workdir/image1.jpg"'
