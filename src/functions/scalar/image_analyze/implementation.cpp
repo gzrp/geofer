@@ -3,23 +3,30 @@
 
 namespace geofer {
 
-// 参数校验
-void ImageAnalyze::ValidateArguments(duckdb::DataChunk& args) {
-    if (args.ColumnCount() != 2) {
-        throw std::runtime_error("analyze_image expects 2 arguments: image_blob, image_desc.");
-    }
-	const auto &blob_col = args.data[0];
-    const auto &desc_col = args.data[1];
-	if (blob_col.GetType().id() != duckdb::LogicalTypeId::BLOB) {
- 		throw std::runtime_error("First argument to analyze_image must be a BLOB containing raw image bytes");
-    }
-    if (desc_col.GetType().id() != duckdb::LogicalTypeId::VARCHAR) {
- 		throw std::runtime_error("Second argument to analyze_image must be VARCHAR (an image description)");
-    }
+// 物体检测框
+struct ObjectBox {
+    std::string label;
+    float confidence;
+    float x1, y1, x2, y2;
+};
+
+// 相对经度位置枚举
+enum class RelativeLongitude {
+    WEST = -1,
+    EAST = 1
+};
+
+// 计算两个检查框的相对经度关系，仅判断东西, 返回结果是 a 相较于 b 的 某侧
+RelativeLongitude compare_relative_longitude(const ObjectBox& a, const ObjectBox& b, const ObjectBox& sunset) {
+    float sunset_cx = (sunset.x1 + sunset.x2) / 2.0f;
+    float a_cx = (a.x1 + a.x2) / 2.0f;
+    float b_cx = (b.x1 + b.x2) / 2.0f;
+    float a_dist = std::abs(a_cx - sunset_cx);
+    float b_dist = std::abs(b_cx - sunset_cx);
+    return (a_dist < b_dist) ? RelativeLongitude::WEST : RelativeLongitude::EAST;
 }
 
-static std::string PostToVisionAPI(const char* image_data, duckdb::idx_t image_size, const std::string &description) {
-
+static std::vector<ObjectBox> PostToVisionAPI(const char* image_data, duckdb::idx_t image_size, const std::string &description) {
 	try {
 		// 构造 multipart 请求体
 		cpr::Multipart multipart {
@@ -42,32 +49,63 @@ static std::string PostToVisionAPI(const char* image_data, duckdb::idx_t image_s
         	throw std::runtime_error("HTTP " + std::to_string(response.status_code) + ": " + response.text);
     	}
 		// 解析 json 结果
-
 		auto j = nlohmann::json::parse(response.text);
-        // std::stringstream ss;
-        // ss << "sha256: " << j["sha256"] << ", size: " << j["file_size"]
-        //   << ", objects: [";
+        std::vector<ObjectBox> objects;
 
-        // for (const auto& obj : j["objects"]) {
-        //    ss << obj["label"].get<std::string>() << "("
-        //       << obj["confidence"].get<float>() << "), ";
-        //}
-        //ss << "]";
-
-        //return ss.str();
-		return j.dump();
+        for (const auto& item : j["objects"]) {
+            ObjectBox obj;
+            obj.label = item.at("label").get<std::string>();
+            obj.confidence = item.at("confidence").get<float>();
+            const auto& bbox = item.at("bbox");
+            if (bbox.size() != 4) {
+                throw std::runtime_error("bbox must have 4 elements");
+            }
+            obj.x1 = bbox[0];
+            obj.y1 = bbox[1];
+            obj.x2 = bbox[2];
+            obj.y2 = bbox[3];
+            objects.push_back(obj);
+        }
+		return objects;
 	} catch (const std::exception &e) {
         throw std::runtime_error(std::string("Exception during POST: ") + e.what());
     }
 }
 
-std::string RunSpatialQuery() {
+std::string GenerateSpatialSQL(const ObjectBox& box_a, const ObjectBox& box_b, const ObjectBox* sunset) {
+    std::string direction_condition;
+    if (sunset != nullptr) {
+        RelativeLongitude relative = compare_relative_longitude(box_a, box_b, *sunset);
+        if (relative == RelativeLongitude::WEST) { // a 在 b 西侧
+            direction_condition = " AND ST_X(a.location) <= ST_X(b.location) ";
+        } else {
+            direction_condition = " AND ST_X(b.location) <= ST_X(a.location) ";
+        }
+    }
+    std::string sql =
+        " WITH geo_a AS ( "
+        "    SELECT * FROM geo_table WHERE name LIKE '%" + box_a.label + "%' "
+        " ), geo_b AS ( "
+        "    SELECT * FROM geo_table WHERE name LIKE '%" + box_b.label + "%' "
+        " ) "
+        " SELECT "
+        "    a.name AS a_name, "
+        "    a.address AS a_address, "
+        "    b.name AS b_name, "
+        "    b.address AS b_address, "
+        "    ROUND((st_distance(a.location, b.location) / 0.0111) * 1000) AS distance "
+        " FROM geo_a AS a "
+        " JOIN geo_b AS b ON 1=1 "
+        " WHERE 1=1 " + direction_condition + " "
+        " ORDER BY distance "
+        " LIMIT 5;";
+
+    return sql;
+}
+
+std::string RunSpatialQuery(std::string sql) {
 	auto con = Config::GetConnection();
-	auto result = con.Query(duckdb_fmt::format(" SELECT h.name AS haoke_name, h.address AS haoke_address, b.name AS bank_name, b.address AS bank_address, round((st_distance(h.location, b.location) / 0.0111) * 1000) AS distance "
-        									   " FROM haoke AS h, bank AS b "
-										       " WHERE ST_X(h.location) <= ST_X(b.location) "
-										       " ORDER BY distance "
-										       " LIMIT 5; "));
+	auto result = con.Query(duckdb_fmt::format(sql));
 	nlohmann::json j_rows = nlohmann::json::array();
 	// 获取列名列表
 	const auto &names = result->names;
@@ -85,6 +123,21 @@ std::string RunSpatialQuery() {
     	j_rows.push_back(row_json);
 	}
     return j_rows.dump();
+}
+
+// 参数校验
+void ImageAnalyze::ValidateArguments(duckdb::DataChunk& args) {
+    if (args.ColumnCount() != 2) {
+        throw std::runtime_error("analyze_image expects 2 arguments: image_blob, image_desc.");
+    }
+    const auto &blob_col = args.data[0];
+    const auto &desc_col = args.data[1];
+    if (blob_col.GetType().id() != duckdb::LogicalTypeId::BLOB) {
+        throw std::runtime_error("First argument to analyze_image must be a BLOB containing raw image bytes");
+    }
+    if (desc_col.GetType().id() != duckdb::LogicalTypeId::VARCHAR) {
+        throw std::runtime_error("Second argument to analyze_image must be VARCHAR (an image description)");
+    }
 }
 
 // 逻辑实现，如有必要调用大模型
@@ -121,23 +174,44 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
         std::string desc = desc_str.GetString();
 
 		 try {
-            std::string vision_json_str = PostToVisionAPI(blob_ptr, blob_size, desc);
- 			auto vision_json = nlohmann::json::parse(vision_json_str);
-            bool has_haoke = false, has_bank = false;
-            for (const auto& obj : vision_json["objects"]) {
-                const std::string label = obj["label"].get<std::string>();
-                if (label.find("好客连锁") != std::string::npos) has_haoke = true;
-                if (label.find("银行") != std::string::npos) has_bank = true;
-            }
+             // 调用 API 获取结构 ObjectBox 列表
+             std::vector<ObjectBox> objects = PostToVisionAPI(blob_ptr, blob_size, desc);
+
+             // 查找落日
+		     std::vector<ObjectBox> candidates;
+		     ObjectBox sunset_box;
+		     bool has_sunset = false;
+		     nlohmann::json vision_json;
+		     vision_json["objects"] = nlohmann::json::array();
+             for (const auto &obj : objects) {
+                 vision_json["objects"].push_back({
+                    {"label", obj.label},
+                    {"confidence", obj.confidence},
+                    {"bbox", {obj.x1, obj.y1, obj.x2, obj.y2}}
+                });
+                 if (obj.label.find("落日") != std::string::npos) {
+                     sunset_box = obj;
+                     has_sunset = true;
+                 } else {
+                     candidates.push_back(obj);
+                 }
+             }
+
+		     nlohmann::json spatial_array  = nlohmann::json::array();
+		     for (size_t i = 0; i < candidates.size(); ++i) {
+		         for (size_t j = i + 1; j < candidates.size(); ++j) {
+		             auto sql = GenerateSpatialSQL(candidates[i], candidates[j], has_sunset ? &sunset_box : nullptr);
+		             auto res = RunSpatialQuery(sql);
+		             nlohmann::json spatial_item;
+		             spatial_item["pair"] = {candidates[i].label, candidates[j].label};
+		             spatial_item["results"] = nlohmann::json::parse(res);
+		             spatial_array.push_back(spatial_item);
+                 }
+             }
 
  			nlohmann::json final_json;
             final_json["vision"] = vision_json;
-            if (has_haoke && has_bank) {
-                auto spatial_json = nlohmann::json::parse(RunSpatialQuery());
-                final_json["spatial"] = spatial_json;
-            } else {
-				final_json["spatial"] = nlohmann::json::array(); // 空数组
-            }
+		    final_json["spatial"] = spatial_array;
 			results.emplace_back(final_json.dump());
         } catch (const std::exception &ex) {
             results.emplace_back(std::string("Error: ") + ex.what());

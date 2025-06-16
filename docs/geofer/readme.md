@@ -50,9 +50,9 @@ select current_schema(),
 SET schema=geofer_config,
 ```
 
+四、图片推理
 
-
-
+准备数据
 ```sql
 CREATE TABLE image_table (
     image_name TEXT,         -- 图片名
@@ -68,52 +68,10 @@ INSERT INTO image_table
 FROM read_blob('/home/zrp/workdir/image1.jpg');
 ```
 
-
-```sql
-SELECT image_analyze(image, image_desc)
-FROM image_table
-WHERE image_name = 'image1.jpg';
-```
-
-```sql
-SELECT
-	h.name,
-	h.address,
-  b.name,
-	b.address,
-	round( ( st_distance ( h.location, b.location ) / 0.0111 ) * 1000 ) AS distance
-FROM
-	haoke AS h,
-	bank AS b
-WHERE ST_X(h.location) <= ST_X(b.location)
-ORDER BY
-	distance
-LIMIT 5;
-```
-
-
-```sql
-COPY (
-    SELECT image_analyze(image, image_desc)
-    FROM image_table
-    WHERE image_name = 'image1.jpg'
-) TO 'output.json' (FORMAT JSON);
-```
-
-
-curl --location --request POST 'http://192.168.56.1:8080/api/v1/image_analyze' \
---form 'description='xxx'' \
---form 'file=@'/home/zrp/workdir/image1.jpg''
-
-
-
-
-
-
 ```sql
 INSTALL spatial;
 LOAD spatial;
-CREATE TABLE haoke (
+CREATE TABLE geo_table (
    id TEXT PRIMARY KEY,
    name TEXT,
    address TEXT,
@@ -127,26 +85,11 @@ CREATE TABLE haoke (
    adname TEXT,
    citycode INTEGER
 );
-
-CREATE TABLE bank (
-  id TEXT PRIMARY KEY,
-  name TEXT,
-  address TEXT,
-  location GEOMETRY,
-  pcode INTEGER,
-  adcode INTEGER,
-  pname TEXT,
-  cityname TEXT,
-  type TEXT,
-  typecode TEXT,
-  adname TEXT,
-  citycode INTEGER
-);
 ```
 
-
+插入数据
 ```sql
-INSERT INTO haoke (id, name, location, address, pcode, adcode, pname, cityname, type, typecode, adname, citycode)
+INSERT INTO geo_table (id, name, location, address, pcode, adcode, pname, cityname, type, typecode, adname, citycode)
 VALUES
 ('B0FFI4B4WU', '好客连锁(宪梓店)', st_GeomFromText('POINT (116.098035 24.280643)'), '莲心路2号', 440000, 441403, '广东省', '梅州市', '购物服务,便民商店/便利店,便民商店/便利店', 60200, '梅县区', 753),
 ('B0FFIJQ7OW', '好客连锁(百花洲店)', st_GeomFromText('POINT (116.122181 24.296652)'), '梅州房地产大厦东门旁', 440000, 441402, '广东省', '梅州市', '购物服务,便民商店/便利店,便民商店/便利店', 60200, '梅江区', 753),
@@ -235,7 +178,7 @@ VALUES
 ```
 
 ```sql
-INSERT INTO bank (id, name, address, location, pcode, adcode, pname, cityname, type, typecode, adname, citycode) VALUES 
+INSERT INTO geo_table (id, name, address, location, pcode, adcode, pname, cityname, type, typecode, adname, citycode) VALUES 
 ('B02F1024E9', '广东农信丰顺农村商业银行(五一分理处)', '汤坑镇五一路6号', ST_GeomFromText('POINT(116.181984 23.758247)'), 440000, 441423, '广东省', '梅州市', '金融保险服务,银行,农村商业银行', '160121', '丰顺县', 753),
 ('B02F102518', '平远农村商业银行', '站前路10号', ST_GeomFromText('POINT(115.89731 24.572926)'), 440000, 441426, '广东省', '梅州市', '金融保险服务,银行,农村商业银行|金融保险服务,银行相关,银行相关', '160249', '平远县', 753),
 ('B02F102541', '广东大埔农村商业银行(埔城分理处)', '新城路115号', ST_GeomFromText('POINT(116.700661 24.354131)'), 440000, 441422, '广东省', '梅州市', '金融保险服务,银行,农村商业银行', '160121', '大埔县', 753),
@@ -457,3 +400,60 @@ INSERT INTO bank (id, name, address, location, pcode, adcode, pname, cityname, t
 ('B0KKOKX1RW', '中国银行(五华华城支行)', '金山街13号', ST_GeomFromText('POINT(115.621044 24.066898)'), 440000, 441424, '广东省', '梅州市', '金融保险服务,银行,中国银行', '160104', '五华县', 753),
 ('B0LGHRO3DP', '中国银行', '侨乡路与客都大道辅路交叉口西北280米', ST_GeomFromText('POINT(116.125725 24.260525)'), 440000, 441402, '广东省', '梅州市', '金融保险服务,银行,中国银行', '160104', '梅江区', 753);
 ```
+
+SQL 验证
+```sql
+WITH geo_a AS ( 
+    SELECT * FROM geo_table WHERE name LIKE '%好客连锁%'
+), geo_b AS ( 
+    SELECT * FROM geo_table WHERE name LIKE '%银行%'
+)
+SELECT 
+    a.name AS a_name, 
+    a.address AS a_address, 
+    b.name AS b_name, 
+    b.address AS b_address, 
+    ROUND((st_distance(a.location, b.location) / 0.0111) * 1000) AS distance 
+FROM geo_a AS a 
+JOIN geo_b AS b ON 1=1
+WHERE 1=1 AND ST_X(a.location) <= ST_X(b.location)
+ORDER BY distance
+LIMIT 5;
+```
+
+
+```sql
+SELECT image_analyze(image, image_desc)
+FROM image_table
+WHERE image_name = 'image1.jpg';
+```
+
+```sql
+SELECT
+	h.name,
+	h.address,
+  b.name,
+	b.address,
+	round( ( st_distance ( h.location, b.location ) / 0.0111 ) * 1000 ) AS distance
+FROM
+	haoke AS h,
+	bank AS b
+WHERE ST_X(h.location) <= ST_X(b.location)
+ORDER BY
+	distance
+LIMIT 5;
+```
+
+
+```sql
+COPY (
+    SELECT image_analyze(image, image_desc) AS result
+    FROM image_table
+    WHERE image_name = 'image1.jpg'
+) TO 'output.json' (FORMAT JSON);
+```
+
+
+curl --location --request POST 'http://192.168.56.1:8080/api/v1/image_analyze' \
+--form 'description='xxx'' \
+--form 'file=@'/home/zrp/workdir/image1.jpg''
