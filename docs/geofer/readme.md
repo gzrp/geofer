@@ -13,7 +13,7 @@
 ```bash
 # 进入 duckdb
 cd ./build/release
-./duckdb geofer.db
+./duckdb geo.db
 ```
 
 二、查看可用扩展

@@ -105,6 +105,9 @@ std::string GenerateSpatialSQL(const ObjectBox& box_a, const ObjectBox& box_b, c
 
 std::string RunSpatialQuery(std::string sql) {
 	auto con = Config::GetConnection();
+    // 确保 spatial 扩展加载
+    con.Query("INSTALL spatial;");
+    con.Query("LOAD spatial;");
 	auto result = con.Query(duckdb_fmt::format(sql));
 	nlohmann::json j_rows = nlohmann::json::array();
 	// 获取列名列表
