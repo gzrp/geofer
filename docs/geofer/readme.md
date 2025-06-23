@@ -54,6 +54,8 @@ SET schema=geofer_config,
 
 准备数据
 ```sql
+./duckdb geo.db
+
 CREATE TABLE image_table (
     image_name TEXT,         -- 图片名
     image BLOB,              -- 图片二进制数据
@@ -129,6 +131,8 @@ LIMIT 5;
 .mode json     -- json 模式  内容完整
 .mode line     --  一行 一条数据， 内容完整，推荐使用
 
+LOAD spatial;
+
 SELECT image_name AS image, image_analyze(image, image_desc) AS result
 FROM image_table
 WHERE image_name = 'image1.jpg';
@@ -137,6 +141,8 @@ SELECT image_name AS image, image_analyze(image, image_desc) AS result
 FROM image_table
 WHERE image_name = 'image1.jpg' or image_name = 'image2.jpg';
 ```
+
+![img.png](img.png)
 
 
 ```sql

@@ -1,5 +1,6 @@
 #include "geofer/functions/scalar/image_analyze.hpp"
 #include <cpr/cpr.h>
+#include <chrono>
 
 namespace geofer {
 
@@ -145,6 +146,9 @@ void ImageAnalyze::ValidateArguments(duckdb::DataChunk& args) {
 
 // 逻辑实现，如有必要调用大模型
 std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
+	// 总耗时
+	auto op_start = std::chrono::steady_clock::now();
+
 	ValidateArguments(args);
     idx_t rows = args.size();
 	std::vector<std::string> results;
@@ -162,10 +166,13 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
     auto desc_data = reinterpret_cast<duckdb::string_t *>(desc_format.data);
 
 	for (idx_t row = 0; row < rows; row++) {
+		// 每张图片处理开始时间
 		if (!blob_format.validity.RowIsValid(row)) {
             results.emplace_back("NULL INPUT");
             continue;
         }
+		// 每张图片处理的开始时间
+		auto t1 = std::chrono::steady_clock::now();
 		auto blob_idx = blob_format.sel->get_index(row);
         auto desc_idx = desc_format.sel->get_index(row);
 
@@ -177,6 +184,7 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
         std::string desc = desc_str.GetString();
 
 		 try {
+
              // 调用 API 获取结构 ObjectBox 列表
              std::vector<ObjectBox> objects = PostToVisionAPI(blob_ptr, blob_size, desc);
 
@@ -211,8 +219,16 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
 		             spatial_array.push_back(spatial_item);
                  }
              }
+			// 对结果进行一个 排序，有结果的排在前面
+			std::sort(spatial_array.begin(), spatial_array.end(), [](const nlohmann::json &a, const nlohmann::json &b) {
+    			return !a["results"].empty() && b["results"].empty();
+			});
 
- 			nlohmann::json final_json;
+			auto t2 = std::chrono::steady_clock::now();  // 每张图片处理结束
+            auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+
+			nlohmann::json final_json;
+			final_json["time_ms"] = std::to_string(duration_ms) + " ms";
             final_json["vision"] = vision_json;
 		    final_json["spatial"] = spatial_array;
 			results.emplace_back(final_json.dump());
@@ -220,6 +236,10 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
             results.emplace_back(std::string("Error: ") + ex.what());
         }
 	}
+	// 总耗时
+	auto op_end = std::chrono::steady_clock::now();
+ 	auto op_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(op_end - op_start).count();
+	std::cout << "[ImageAnalyze] 执行 " << rows << " 行图像处理，总耗时: " << op_duration_ms << " ms" << std::endl;
 	return results;
 }
 
