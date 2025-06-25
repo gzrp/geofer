@@ -73,7 +73,7 @@ SELECT
     'image2.jpg' AS image_name,
     content AS image,
     'image2 描述' AS image_desc
-FROM read_blob('/home/zrp/workdir/image1.jpg');
+FROM read_blob('/home/zrp/workdir/image2.jpg');
 ```
 
 spatial 经纬度扩展
@@ -119,7 +119,7 @@ SELECT
     ROUND((st_distance(a.location, b.location) / 0.0111) * 1000) AS distance 
 FROM geo_a AS a 
 JOIN geo_b AS b ON 1=1
-WHERE 1=1 AND ST_X(a.location) <= ST_X(b.location)
+WHERE 1=1 AND ST_X(a.location) <= ST_X(b.location) AND distance > 1 AND distance < 100
 ORDER BY distance
 LIMIT 5;
 ```
@@ -136,6 +136,10 @@ LOAD spatial;
 SELECT image_name AS image, image_analyze(image, image_desc) AS result
 FROM image_table
 WHERE image_name = 'image1.jpg';
+
+SELECT image_name AS image, image_analyze(image, image_desc) AS result
+FROM image_table
+WHERE image_name = 'image2.jpg';
 
 SELECT image_name AS image, image_analyze(image, image_desc) AS result
 FROM image_table

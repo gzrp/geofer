@@ -97,7 +97,7 @@ std::string GenerateSpatialSQL(const ObjectBox& box_a, const ObjectBox& box_b, c
         "    ROUND((st_distance(a.location, b.location) / 0.0111) * 1000) AS distance "
         " FROM geo_a AS a "
         " JOIN geo_b AS b ON 1=1 "
-        " WHERE 1=1 " + direction_condition + " "
+        " WHERE 1=1 AND distance > 1 AND distance < 100 " + direction_condition + " "
         " ORDER BY distance "
         " LIMIT 5;";
 
@@ -216,7 +216,11 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
 		             nlohmann::json spatial_item;
 		             spatial_item["pair"] = {candidates[i].label, candidates[j].label};
 		             spatial_item["results"] = nlohmann::json::parse(res);
-		             spatial_array.push_back(spatial_item);
+
+					 // 结果非空加入数组
+					 if (!spatial_item["results"].empty()) {
+						spatial_array.push_back(spatial_item);
+					 }
                  }
              }
 			// 对结果进行一个 排序，有结果的排在前面
