@@ -200,7 +200,7 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
                     {"confidence", obj.confidence},
                     {"bbox", {obj.x1, obj.y1, obj.x2, obj.y2}}
                 });
-                 if (obj.label.find("落日") != std::string::npos) {
+                 if (obj.label.find("夕阳") != std::string::npos) {
                      sunset_box = obj;
                      has_sunset = true;
                  } else {

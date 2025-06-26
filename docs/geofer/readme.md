@@ -157,6 +157,24 @@ COPY (
 ) TO 'output.json' (FORMAT JSON);
 ```
 
+```sql
+WITH geo_a AS ( 
+    SELECT * FROM geo_table WHERE name LIKE '%<entity_a>%'
+), geo_b AS ( 
+    SELECT * FROM geo_table WHERE name LIKE '%<entity_b>%'
+)
+SELECT 
+    a.name AS a_name, 
+    a.address AS a_address, 
+    b.name AS b_name, 
+    b.address AS b_address, 
+    ROUND((st_distance(a.location, b.location) / 0.0111) * 1000) AS distance 
+FROM geo_a AS a 
+JOIN geo_b AS b ON 1=1
+WHERE 1=1 AND distance > 1 AND distance < 100 {AND ST_X(a.location) <= ST_X(b.location)} 
+ORDER BY distance
+LIMIT 5;
+```
 
 curl --location --request POST 'http://192.168.56.1:8080/api/v1/image_analyze' \
 --form 'description='xxx'' \
