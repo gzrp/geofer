@@ -1,4 +1,4 @@
-INSERT INTO bank (id, name, location, address, pcode, adcode, pname, cityname, type, typecode, adname, citycode)
+INSERT INTO geo_table (id, name, location, address, pcode, adcode, pname, cityname, type, typecode, adname, citycode)
 VALUES
     ('B030000JKK', '中国工商银行(潮州分行)', st_GeomFromText('POINT (116.619236 23.659626)'), '潮州大道与潮枫路交汇处北100米', 440000, 445102, '广东省', '潮州市', '金融保险服务;银行;中国工商银行', 160105, '湘桥区', 768),
     ('B0300005E3', '中国人民银行(潮州市分行)', st_GeomFromText('POINT (116.626560 23.671907)'), '新洋路523号', 440000, 445102, '广东省', '潮州市', '金融保险服务;银行;中国人民银行', 160101, '湘桥区', 768),

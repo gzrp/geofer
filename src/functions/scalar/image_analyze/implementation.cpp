@@ -184,9 +184,11 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
         std::string desc = desc_str.GetString();
 
 		 try {
-
+			 auto api_t1 = std::chrono::steady_clock::now();
              // 调用 API 获取结构 ObjectBox 列表
              std::vector<ObjectBox> objects = PostToVisionAPI(blob_ptr, blob_size, desc);
+
+			 auto api_t2 = std::chrono::steady_clock::now();
 
              // 查找落日
 		     std::vector<ObjectBox> candidates;
@@ -231,8 +233,11 @@ std::vector<std::string> ImageAnalyze::Operation(duckdb::DataChunk& args) {
 			auto t2 = std::chrono::steady_clock::now();  // 每张图片处理结束
             auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
+			auto api_ms = std::chrono::duration_cast<std::chrono::milliseconds>(api_t2 - api_t1).count();
+
 			nlohmann::json final_json;
 			final_json["time_ms"] = std::to_string(duration_ms) + " ms";
+			final_json["api_ms"] = std::to_string(api_ms) + " ms";
             final_json["vision"] = vision_json;
 		    final_json["spatial"] = spatial_array;
 			results.emplace_back(final_json.dump());
